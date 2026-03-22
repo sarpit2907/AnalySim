@@ -1,0 +1,347 @@
+<!-- ═══════════════════════════════════════════════════════
+     AnalySim — Project Detail (Mock)
+     GSoC 2026 · Project #14 (UI/UX Refinement)
+     Mirrors the existing project detail page with
+     improved design language and new UX patterns
+═══════════════════════════════════════════════════════ -->
+
+<div class="pd-root" *ngIf="!loading && project">
+
+  <!-- ─── NAVY HEADER ──────────────────────────── -->
+  <div class="pd-banner">
+    <div class="pd-banner__left">
+      <button class="pd-back" (click)="onBack()" type="button">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <div class="pd-banner__info">
+        <div class="pd-banner__route">
+          <i class="pi pi-user pd-banner__user-ico"></i>
+          {{ ownerMember?.userName }} /
+          <span class="pd-banner__project-name">{{ project.name }}</span>
+        </div>
+        <div class="pd-banner__meta">
+          <span class="vis-pill"
+                [class.vis-pill--pub]="project.visibility === 'public'"
+                [class.vis-pill--priv]="project.visibility === 'private'">
+            <i class="pi" [class.pi-globe]="project.visibility === 'public'"
+                          [class.pi-lock]="project.visibility === 'private'"></i>
+            {{ project.visibility === 'public' ? 'Public' : 'Private' }}
+          </span>
+          <span class="pd-banner__tag" *ngFor="let tag of project.projectTags">
+            {{ tag.name }}
+          </span>
+          <span class="fork-origin" *ngIf="project.forkedFromProjectID > 0">
+            <i class="pi pi-share-alt"></i> forked from {{ project.forkedFromRoute }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pd-banner__actions">
+      <div class="pd-stat">
+        <i class="pi pi-users"></i>
+        <span>{{ followerCount }} followers</span>
+      </div>
+      <div class="pd-stat">
+        <i class="pi pi-file"></i>
+        <span>{{ project.blobFiles.length }} files</span>
+      </div>
+      <div class="pd-stat">
+        <i class="pi pi-server"></i>
+        <span>{{ formatBytes(totalSizeBytes) }}</span>
+      </div>
+      <button pButton type="button"
+              label="Fork Project"
+              icon="pi pi-share-alt"
+              class="p-button-sm pd-fork-btn"
+              (click)="onFork()">
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── DESCRIPTION ──────────────────────────── -->
+  <div class="pd-desc-bar">
+    <p class="pd-desc">{{ project.description }}</p>
+    <div class="pd-desc__dates">
+      <span>Created {{ project.dateCreated | date:'MMM d, yyyy' }}</span>
+      <span class="pd-sep">·</span>
+      <span>Updated {{ project.lastUpdated | date:'MMM d, yyyy' }}</span>
+    </div>
+  </div>
+
+  <!-- ─── TABS ─────────────────────────────────── -->
+  <div class="pd-tabs">
+    <button class="pd-tab" [class.pd-tab--active]="activeTab === 'files'"
+            (click)="activeTab = 'files'" type="button">
+      <i class="pi pi-folder-open"></i>
+      Files
+      <span class="pd-tab__count">{{ project.blobFiles.length }}</span>
+    </button>
+    <button class="pd-tab" [class.pd-tab--active]="activeTab === 'notebooks'"
+            (click)="activeTab = 'notebooks'" type="button">
+      <i class="pi pi-book"></i>
+      Notebooks
+      <span class="pd-tab__count">{{ project.notebooks.length }}</span>
+    </button>
+    <button class="pd-tab" [class.pd-tab--active]="activeTab === 'members'"
+            (click)="activeTab = 'members'" type="button">
+      <i class="pi pi-users"></i>
+      Members
+      <span class="pd-tab__count">{{ project.members.length }}</span>
+    </button>
+    <button class="pd-tab" [class.pd-tab--active]="activeTab === 'log'"
+            (click)="activeTab = 'log'" type="button">
+      <i class="pi pi-history"></i>
+      Project Log
+    </button>
+  </div>
+
+  <!-- ─── TAB CONTENT ──────────────────────────── -->
+  <div class="pd-body">
+
+    <!-- ══ FILES TAB ══ -->
+    <div *ngIf="activeTab === 'files'" class="pd-panel">
+
+      <div class="pd-panel__toolbar">
+        <div class="search-wrap">
+          <i class="pi pi-search search-icon"></i>
+          <input pInputText type="text"
+                 class="search-input"
+                 placeholder="Search files..."
+                 [(ngModel)]="fileSearch" />
+        </div>
+        <button pButton type="button"
+                label="Upload File"
+                icon="pi pi-upload"
+                class="p-button-sm pd-upload-btn"
+                (click)="toggleUploadPanel()">
+        </button>
+      </div>
+
+      <!-- Upload panel (mock) -->
+      <div class="upload-panel" *ngIf="showUploadPanel">
+        <div class="upload-drop">
+          <i class="pi pi-cloud-upload upload-drop__ico"></i>
+          <p class="upload-drop__label">Drop files here or click to browse</p>
+          <p class="upload-drop__hint">Supports CSV, JSON, Python, MATLAB, HDF5 · Max 100 MB per file</p>
+          <button pButton type="button" label="Choose Files"
+                  icon="pi pi-folder-open"
+                  class="p-button-sm p-button-outlined pd-outline-btn">
+          </button>
+        </div>
+      </div>
+
+      <!-- File tree grouped by directory -->
+      <div class="file-tree">
+        <div *ngFor="let dir of directories" class="dir-group">
+          <div class="dir-header">
+            <i class="pi pi-folder dir-header__ico"></i>
+            <span class="dir-header__name">{{ dir }}</span>
+            <span class="dir-header__count">{{ filesInDir(dir).length }} files</span>
+          </div>
+
+          <div class="file-row" *ngFor="let f of filesInDir(dir)">
+            <span class="ext-badge" [ngClass]="extColor(f.extension)">
+              {{ f.extension }}
+            </span>
+            <div class="file-row__info">
+              <span class="file-row__name">{{ f.name }}{{ f.extension }}</span>
+              <span class="file-row__meta">
+                {{ formatBytes(f.size) }} · uploaded by {{ f.uploadedBy }} · {{ f.lastModified | date:'MMM d, yyyy' }}
+              </span>
+            </div>
+            <div class="file-row__actions">
+              <button pButton type="button" icon="pi pi-eye"
+                      class="p-button-rounded p-button-text p-button-sm file-act file-act--view"
+                      pTooltip="Preview" tooltipPosition="top">
+              </button>
+              <button pButton type="button" icon="pi pi-download"
+                      class="p-button-rounded p-button-text p-button-sm file-act file-act--dl"
+                      pTooltip="Download" tooltipPosition="top"
+                      (click)="onDownloadFile(f)">
+              </button>
+            </div>
+          </div>
+
+          <div class="file-empty" *ngIf="filesInDir(dir).length === 0">
+            No files match your search in {{ dir }}
+          </div>
+        </div>
+
+        <!-- Global empty -->
+        <div class="tab-empty" *ngIf="filteredFiles.length === 0 && fileSearch">
+          <i class="pi pi-search tab-empty__ico"></i>
+          <p>No files match "<strong>{{ fileSearch }}</strong>"</p>
+          <button pButton type="button" label="Clear search"
+                  class="p-button-text p-button-sm pd-text-btn"
+                  (click)="fileSearch = ''">
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ NOTEBOOKS TAB ══ -->
+    <div *ngIf="activeTab === 'notebooks'" class="pd-panel">
+
+      <div class="pd-panel__toolbar">
+        <span class="pd-panel__info">
+          {{ project.notebooks.length }} notebook{{ project.notebooks.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
+      <div class="nb-grid" *ngIf="project.notebooks.length > 0">
+        <div *ngFor="let nb of project.notebooks" class="nb-card">
+          <div class="nb-card__hd">
+            <span class="nb-type-badge"
+                  [class.nb-type-badge--jup]="nb.type === 'jupyter'"
+                  [class.nb-type-badge--obs]="nb.type === 'observable'">
+              {{ nb.type === 'jupyter' ? 'Jupyter' : 'Observable' }}
+            </span>
+            <span class="nb-size">{{ formatBytes(nb.size) }}</span>
+          </div>
+          <div class="nb-card__body">
+            <h4 class="nb-card__name">{{ nb.name }}</h4>
+            <p class="nb-card__meta">
+              Last modified {{ nb.lastModified | date:'MMM d, yyyy' }}
+            </p>
+          </div>
+          <div class="nb-card__ft">
+            <button pButton type="button"
+                    label="Run Notebook"
+                    icon="pi pi-play"
+                    class="p-button-sm pd-upload-btn"
+                    (click)="onViewNotebook(nb)">
+            </button>
+            <button pButton type="button"
+                    label="View"
+                    icon="pi pi-eye"
+                    class="p-button-sm p-button-outlined pd-outline-btn"
+                    (click)="onViewNotebook(nb)">
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-empty" *ngIf="project.notebooks.length === 0">
+        <i class="pi pi-book tab-empty__ico"></i>
+        <p>No notebooks yet</p>
+        <button pButton type="button" label="Add Notebook"
+                icon="pi pi-plus"
+                class="p-button-sm p-button-outlined pd-outline-btn">
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ MEMBERS TAB ══ -->
+    <div *ngIf="activeTab === 'members'" class="pd-panel">
+
+      <div class="pd-panel__toolbar">
+        <span class="pd-panel__info">
+          {{ project.members.length }} members · {{ followerCount }} followers
+        </span>
+        <button pButton type="button" label="Invite Member"
+                icon="pi pi-user-plus"
+                class="p-button-sm pd-upload-btn">
+        </button>
+      </div>
+
+      <div class="member-list">
+        <div *ngFor="let m of project.members" class="member-row">
+          <div class="member-avatar">{{ m.avatarInitial }}</div>
+          <div class="member-info">
+            <span class="member-name">{{ m.userName }}</span>
+            <span class="member-email">{{ m.email }}</span>
+          </div>
+          <span class="member-role"
+                [class.member-role--owner]="m.userRole === 'Owner'"
+                [class.member-role--member]="m.userRole === 'Member'">
+            {{ m.userRole }}
+          </span>
+          <span class="member-following" *ngIf="m.isFollowing">
+            <i class="pi pi-star-fill"></i> Following
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROJECT LOG TAB ══ -->
+    <div *ngIf="activeTab === 'log'" class="pd-panel">
+
+      <div class="pd-panel__toolbar">
+        <span class="pd-panel__info">Activity timeline</span>
+      </div>
+
+      <div class="log-timeline">
+        <div *ngFor="let entry of project.projectLog" class="log-entry">
+          <div class="log-entry__dot">
+            <i class="pi" [ngClass]="actionIcon(entry.action)"></i>
+          </div>
+          <div class="log-entry__body">
+            <div class="log-entry__line">
+              <span class="log-user">{{ entry.userName }}</span>
+              <span class="log-action">{{ entry.action }}</span>
+              <span class="log-detail">{{ entry.detail }}</span>
+            </div>
+            <span class="log-time">{{ timeAgo(entry.timestamp) }} · {{ entry.timestamp | date:'MMM d, yyyy, h:mm a' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── LOADING ─────────────────────────────── -->
+<div class="pd-loading" *ngIf="loading">
+  <i class="pi pi-spin pi-spinner"></i>
+  <span>Loading project...</span>
+</div>
+
+<!-- ─── FORK CONFIRMATION ────────────────────── -->
+<div class="del-overlay" *ngIf="showForkConfirm" (click)="cancelFork()">
+  <div class="del-modal" (click)="$event.stopPropagation()">
+
+    <div class="del-modal__hd">
+      <div class="del-modal__icon del-modal__icon--fork">
+        <i class="pi pi-share-alt"></i>
+      </div>
+      <h3 class="del-modal__title">Fork Project</h3>
+    </div>
+
+    <div class="del-modal__body">
+      <p class="del-modal__msg">
+        Create your own copy of
+        <strong>{{ project?.route }}</strong>
+        in your workspace.
+      </p>
+      <div class="del-modal__meta">
+        <span class="del-meta-row">
+          <i class="pi pi-file"></i>
+          {{ project?.blobFiles?.length }} files will be copied
+        </span>
+        <span class="del-meta-row">
+          <i class="pi pi-server"></i>
+          {{ formatBytes(totalSizeBytes) }} storage required
+        </span>
+        <span class="del-meta-row">
+          <i class="pi pi-info-circle"></i>
+          Changes to your fork won't affect the original
+        </span>
+      </div>
+    </div>
+
+    <div class="del-modal__ft">
+      <button pButton type="button" label="Cancel"
+              class="p-button-outlined p-button-sm pd-outline-btn"
+              (click)="cancelFork()" [disabled]="forkInProgress">
+      </button>
+      <button pButton type="button"
+              [label]="forkInProgress ? 'Forking...' : 'Fork Project'"
+              [icon]="forkInProgress ? 'pi pi-spin pi-spinner' : 'pi pi-share-alt'"
+              class="p-button-sm pd-fork-btn"
+              (click)="confirmFork()" [disabled]="forkInProgress">
+      </button>
+    </div>
+
+  </div>
+</div>

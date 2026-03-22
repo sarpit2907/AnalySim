@@ -1,0 +1,205 @@
+<!-- ═══════════════════════════════════════════════════════
+     AnalySim — Create Project (Mock)
+     GSoC 2026 · Project #14 (UI/UX Refinement)
+═══════════════════════════════════════════════════════ -->
+
+<div class="cp-root">
+
+  <!-- ─── SUCCESS STATE ────────────────────────── -->
+  <div class="cp-success" *ngIf="submitted">
+    <div class="cp-success__card">
+      <div class="cp-success__icon">
+        <i class="pi pi-check-circle"></i>
+      </div>
+      <h2 class="cp-success__title">Project Created!</h2>
+      <p class="cp-success__sub">
+        <strong>{{ form.name }}</strong> is ready. Redirecting to your dashboard...
+      </p>
+      <div class="cp-success__route">
+        <i class="pi pi-link"></i>
+        {{ routePreview }}
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── FORM ─────────────────────────────────── -->
+  <div *ngIf="!submitted">
+
+    <!-- Navy header -->
+    <div class="cp-banner">
+      <button class="cp-back" (click)="onCancel()" type="button">
+        <i class="pi pi-arrow-left"></i>
+      </button>
+      <div>
+        <div class="cp-banner__title">Create New Project</div>
+        <div class="cp-banner__sub">Host your datasets and notebooks in one place</div>
+      </div>
+    </div>
+
+    <div class="cp-body">
+      <div class="cp-layout">
+
+        <!-- ── MAIN FORM ── -->
+        <div class="cp-form-col">
+          <div class="cp-card">
+
+            <!-- Project Name -->
+            <div class="fg">
+              <label class="fg__lbl" for="proj-name">
+                Project Name
+                <span class="fg__required">*</span>
+              </label>
+              <input pInputText
+                     id="proj-name"
+                     type="text"
+                     class="cp-input"
+                     placeholder="e.g. HC-CA1-Firing"
+                     [class.cp-input--error]="nameError"
+                     [(ngModel)]="form.name"
+                     (ngModelChange)="validateName()"
+                     maxlength="20" />
+              <div class="fg__footer">
+                <span class="fg__error" *ngIf="nameError">{{ nameError }}</span>
+                <span class="fg__hint" *ngIf="!nameError">Letters, numbers, hyphens, underscores only</span>
+                <span class="fg__count" [class.fg__count--warn]="nameCharCount > 16">
+                  {{ nameCharCount }}/20
+                </span>
+              </div>
+            </div>
+
+            <!-- Route preview -->
+            <div class="route-preview" *ngIf="routePreview">
+              <i class="pi pi-link route-preview__ico"></i>
+              <span class="route-preview__label">Project route:</span>
+              <code class="route-preview__route">analysim.tech/project/{{ routePreview }}</code>
+            </div>
+
+            <!-- Description -->
+            <div class="fg">
+              <label class="fg__lbl" for="proj-desc">Description</label>
+              <textarea id="proj-desc"
+                        class="cp-textarea"
+                        placeholder="Describe your project, its aims, and the type of data it contains..."
+                        [(ngModel)]="form.description"
+                        rows="4"
+                        maxlength="500">
+              </textarea>
+              <div class="fg__footer">
+                <span class="fg__hint">Optional but recommended — helps others discover your work</span>
+                <span class="fg__count" [class.fg__count--warn]="descCharCount > 450">
+                  {{ descCharCount }}/500
+                </span>
+              </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="fg">
+              <label class="fg__lbl">Tags</label>
+              <div class="tag-input-wrap">
+                <div class="tag-chips" *ngIf="form.tags.length > 0">
+                  <span *ngFor="let tag of form.tags" class="tag-chip">
+                    {{ tag }}
+                    <button class="tag-chip__x" type="button" (click)="removeTag(tag)">
+                      <i class="pi pi-times"></i>
+                    </button>
+                  </span>
+                </div>
+                <div class="tag-input-row">
+                  <input pInputText type="text"
+                         class="cp-input"
+                         placeholder="Add tag and press Enter (e.g. neuroscience)"
+                         [(ngModel)]="tagInput"
+                         (keydown)="onTagKeydown($event)" />
+                  <button pButton type="button"
+                          label="Add"
+                          icon="pi pi-plus"
+                          class="p-button-sm p-button-outlined cp-outline-btn"
+                          (click)="addTag()"
+                          [disabled]="!tagInput.trim()">
+                  </button>
+                </div>
+                <span class="fg__hint">
+                  {{ form.tags.length }}/10 tags · Tags map to ProjectTag entities in the database
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── SIDEBAR ── -->
+        <div class="cp-sidebar-col">
+
+          <!-- Visibility -->
+          <div class="cp-card cp-card--compact">
+            <h4 class="cp-card__title">Visibility</h4>
+            <p class="cp-card__hint">Controls who can view this project and its files</p>
+
+            <label class="vis-option" [class.vis-option--active]="form.visibility === 'public'"
+                   (click)="form.visibility = 'public'">
+              <div class="vis-option__radio">
+                <div class="vis-radio" [class.vis-radio--on]="form.visibility === 'public'"></div>
+              </div>
+              <div class="vis-option__ico vis-option__ico--pub">
+                <i class="pi pi-globe"></i>
+              </div>
+              <div class="vis-option__text">
+                <span class="vis-option__label">Public</span>
+                <span class="vis-option__desc">Anyone can view and fork this project</span>
+              </div>
+            </label>
+
+            <label class="vis-option" [class.vis-option--active]="form.visibility === 'private'"
+                   (click)="form.visibility = 'private'">
+              <div class="vis-option__radio">
+                <div class="vis-radio" [class.vis-radio--on]="form.visibility === 'private'"></div>
+              </div>
+              <div class="vis-option__ico vis-option__ico--priv">
+                <i class="pi pi-lock"></i>
+              </div>
+              <div class="vis-option__text">
+                <span class="vis-option__label">Private</span>
+                <span class="vis-option__desc">Only you and invited members can view</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Tips -->
+          <div class="cp-card cp-card--compact cp-tips">
+            <h4 class="cp-card__title">
+              <i class="pi pi-info-circle cp-tips__ico"></i>
+              After creating
+            </h4>
+            <ul class="cp-tips__list">
+              <li><i class="pi pi-upload"></i> Upload CSV, Python, MATLAB files</li>
+              <li><i class="pi pi-book"></i> Add Jupyter or Observable notebooks</li>
+              <li><i class="pi pi-user-plus"></i> Invite collaborators as Members</li>
+              <li><i class="pi pi-share-alt"></i> Others can Fork your project</li>
+            </ul>
+          </div>
+
+          <!-- Actions -->
+          <div class="cp-actions">
+            <button pButton type="button"
+                    label="Cancel"
+                    class="p-button-outlined p-button-sm cp-outline-btn"
+                    (click)="onCancel()"
+                    [disabled]="submitting">
+            </button>
+            <button pButton type="button"
+                    [label]="submitting ? 'Creating...' : 'Create Project'"
+                    [icon]="submitting ? 'pi pi-spin pi-spinner' : 'pi pi-check'"
+                    class="p-button-sm cp-submit-btn"
+                    (click)="onSubmit()"
+                    [disabled]="!isFormValid || submitting">
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>

@@ -7,6 +7,23 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ToastrModule } from 'ngx-toastr';
 import { ModalModule } from 'ngx-bootstrap/modal';
 
+import { TableModule }      from 'primeng/table';
+import { DropdownModule }   from 'primeng/dropdown';
+import { CalendarModule }   from 'primeng/calendar';
+import { CheckboxModule }   from 'primeng/checkbox';
+import { TagModule }        from 'primeng/tag';
+import { InputTextModule }  from 'primeng/inputtext';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { ButtonModule }     from 'primeng/button';
+import { RippleModule }     from 'primeng/ripple';
+import { TooltipModule }    from 'primeng/tooltip';
+import { SkeletonModule }   from 'primeng/skeleton';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { DashboardMockupComponent } from './dashboard-mockup/dashboard-mockup.component';
+import { ProjectDetailMockComponent } from './project-detail-mock/project-detail-mock.component';
+import { ProjectCreateMockComponent } from './project-create-mock/project-create-mock.component';
+import { CommonModule } from '@angular/common';
+
 import { AppComponent } from './app.component';
 import { NavbarComponent } from './navbar/navbar.component';
 import { HomeComponent } from './home/home.component';
@@ -58,6 +75,9 @@ import { EmailResendVerificationComponent } from './email-confirmation/email-res
     EmailForgotPassComponent,
     ResetPasswordComponent,
     EmailResendVerificationComponent,
+    DashboardMockupComponent,
+    ProjectDetailMockComponent,
+    ProjectCreateMockComponent,
   ],
   imports: [
     BrowserModule,
@@ -67,6 +87,20 @@ import { EmailResendVerificationComponent } from './email-confirmation/email-res
     ReactiveFormsModule,
     BrowserAnimationsModule,
     ApplicationPipesModule,
+    CommonModule,        
+    FormsModule,         
+    TableModule,         
+    DropdownModule,      
+    CalendarModule,      
+    CheckboxModule,      
+    TagModule,           
+    InputTextModule,     
+    ProgressBarModule,   
+    ButtonModule,        
+    RippleModule,        
+    TooltipModule,       
+    SkeletonModule,
+    SelectButtonModule,
     ToastrModule.forRoot(),
     ModalModule.forRoot(),
   ],

@@ -1,0 +1,1055 @@
+<!-- ═══════════════════════════════════════════════════
+     AnalySim — Research Dashboard
+     GSoC 2026 · Project #14 (UI/UX Refinement)
+     Angular 14 · PrimeNG · Bootstrap Grid
+     Data model: mirrors Project.cs + BlobFile.cs + Notebook.cs
+═══════════════════════════════════════════════════ -->
+
+<div class="dash-root">
+
+  <!-- ─── NAVY PAGE BANNER ─────────────────────── -->
+  <div class="page-banner">
+    <div class="page-banner__left">
+      <i class="pi pi-chart-bar page-banner__ico"></i>
+      <div>
+        <div class="page-banner__title">Research Dashboard</div>
+        <div class="page-banner__sub">Analyze and filter your research projects and cross-project datasets</div>
+      </div>
+    </div>
+    <div class="page-banner__right">
+      <div class="page-banner__stat">
+        <span class="page-banner__num">{{ createdLast30Days }}</span>
+        <span class="page-banner__lbl">new this month</span>
+      </div>
+      <div class="page-banner__stat">
+        <span class="page-banner__num">{{ updatedLast30Days }}</span>
+        <span class="page-banner__lbl">updated recently</span>
+      </div>
+      <div class="page-banner__stat">
+        <span class="page-banner__num">{{ forkedProjectsCount }}</span>
+        <span class="page-banner__lbl">forked projects</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PAGE HEADER ───────────────────────────── -->
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Overview</h1>
+      <p class="dash-subtitle">{{ statTotalProjects }} projects · {{ statTotalFiles }} files · {{ statTotalNotebooks }} notebooks</p>
+    </div>
+    <div class="dash-header__actions">
+      <button pButton type="button"
+              label="Export CSV"
+              icon="pi pi-download"
+              class="p-button-sm p-button-outlined btn-outline"
+              (click)="onExport()">
+      </button>
+      <button pButton type="button"
+              label="New Project"
+              icon="pi pi-plus"
+              class="p-button-sm btn-solid"
+              (click)="onNewProject()">
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── STAT CARDS ────────────────────────────── -->
+  <div class="stat-row">
+
+    <div class="stat-card stat-card--1">
+      <div class="stat-card__icon"><i class="pi pi-folder-open"></i></div>
+      <div class="stat-card__body">
+        <span class="stat-card__num">{{ statTotalProjects }}</span>
+        <span class="stat-card__lbl">Total Projects</span>
+      </div>
+      <span class="stat-card__sub">
+        {{ statPublicProjects }} public · {{ statTotalProjects - statPublicProjects }} private
+      </span>
+    </div>
+
+    <div class="stat-card stat-card--2">
+      <div class="stat-card__icon"><i class="pi pi-file"></i></div>
+      <div class="stat-card__body">
+        <span class="stat-card__num">{{ statTotalFiles }}</span>
+        <span class="stat-card__lbl">Total Files (BlobFiles)</span>
+      </div>
+      <span class="stat-card__sub">Avg {{ avgFilesPerProject }} files / project</span>
+    </div>
+
+    <div class="stat-card stat-card--3">
+      <div class="stat-card__icon"><i class="pi pi-server"></i></div>
+      <div class="stat-card__body">
+        <span class="stat-card__num">{{ statTotalSizeGB }}<small> GB</small></span>
+        <span class="stat-card__lbl">Storage — {{ storagePercent }}% of {{ storageQuotaGB }} GB</span>
+        <div class="storage-bar">
+          <div class="storage-bar__fill" [ngClass]="storageBarClass"
+               [style.width.%]="storagePercent"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-card stat-card--4">
+      <div class="stat-card__icon"><i class="pi pi-book"></i></div>
+      <div class="stat-card__body">
+        <span class="stat-card__num">{{ statTotalNotebooks }}</span>
+        <span class="stat-card__lbl">Notebooks</span>
+      </div>
+      <span class="stat-card__sub">
+        In {{ withNotebooksCount }} of {{ statTotalProjects }} projects
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ─── ANALYTICS PANEL ───────────────────────── -->
+  <div class="analytics-panel" *ngIf="showAnalyticsPanel">
+
+    <div class="analytics-panel__hd">
+      <span class="analytics-panel__title">
+        <i class="pi pi-chart-bar"></i> Analytics snapshot
+        <span class="analytics-panel__scope" *ngIf="hasActiveFilters">
+          (filtered — {{ filteredProjects.length }} projects)
+        </span>
+      </span>
+      <button class="analytics-toggle" (click)="showAnalyticsPanel = false" type="button">
+        <i class="pi pi-chevron-up"></i>
+      </button>
+    </div>
+
+    <div class="analytics-grid">
+
+      <!-- File type breakdown -->
+      <div class="analytics-block">
+        <h4 class="analytics-block__title">File types (BlobFile)</h4>
+        <div class="ext-bars">
+          <div *ngFor="let row of extBreakdown" class="ext-bar-row">
+            <span class="ext-badge" [ngClass]="extColor(row.ext)">.{{ row.ext | lowercase }}</span>
+            <div class="ext-bar-track">
+              <div class="ext-bar-fill" [style.width.%]="row.pct"></div>
+            </div>
+            <span class="ext-count">{{ row.count }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visibility + provenance -->
+      <div class="analytics-block">
+        <h4 class="analytics-block__title">Visibility &amp; provenance</h4>
+        <div class="vis-split">
+          <div *ngFor="let v of visBreakdown" class="vis-split-row">
+            <span class="vis-lbl">{{ v.label }}</span>
+            <div class="vis-track">
+              <div class="vis-fill"
+                   [class.vis-fill--pub]="v.label === 'Public'"
+                   [class.vis-fill--priv]="v.label === 'Private'"
+                   [style.width.%]="v.pct">
+              </div>
+            </div>
+            <span class="vis-cnt">{{ v.count }}</span>
+          </div>
+        </div>
+        <div class="kv-list" style="margin-top:.65rem; padding-top:.5rem; border-top:1px solid var(--border-lt)">
+          <div class="kv-row">
+            <span class="kv-key">Original projects</span>
+            <span class="kv-val">{{ filteredProjects.length - forkedCount }}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Forks</span>
+            <span class="kv-val">{{ forkedCount }}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">With notebooks</span>
+            <span class="kv-val">{{ withNotebooksCount }}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Avg members</span>
+            <span class="kv-val">{{ avgMembersPerProject }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity over last 6 months -->
+      <div class="analytics-block">
+        <h4 class="analytics-block__title">Activity — last 6 months</h4>
+        <div class="activity-chart">
+          <div *ngFor="let m of activityByMonth" class="activity-col">
+            <div class="activity-bars">
+              <div class="activity-bar activity-bar--created"
+                   [style.height.%]="(m.created / maxActivityVal) * 100"
+                   [attr.data-val]="m.created"
+                   [title]="m.created + ' created'">
+              </div>
+              <div class="activity-bar activity-bar--updated"
+                   [style.height.%]="(m.updated / maxActivityVal) * 100"
+                   [attr.data-val]="m.updated"
+                   [title]="m.updated + ' updated'">
+              </div>
+            </div>
+            <span class="activity-label">{{ m.month }}</span>
+          </div>
+        </div>
+        <div class="activity-legend">
+          <span class="leg-dot leg-dot--created"></span> Created
+          <span class="leg-dot leg-dot--updated" style="margin-left:.6rem"></span> Updated
+        </div>
+        <div class="kv-list" style="margin-top:.6rem">
+          <div class="kv-row">
+            <span class="kv-key">Created last 30 days</span>
+            <span class="kv-val kv-val--accent">{{ createdLast30Days }}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Created last 12 months</span>
+            <span class="kv-val kv-val--accent">{{ createdLast12Months }}</span>
+          </div>
+          <div class="kv-row">
+            <span class="kv-key">Updated last 30 days</span>
+            <span class="kv-val">{{ updatedLast30Days }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top owners + highlights -->
+      <div class="analytics-block">
+        <h4 class="analytics-block__title">Projects per owner</h4>
+        <div class="owner-bars">
+          <ng-container *ngFor="let o of ownerBreakdown">
+            <div class="owner-bar-row">
+              <span class="owner-name">{{ o.owner }}</span>
+              <div class="owner-track">
+                <div class="owner-fill" [style.width.%]="o.pct"></div>
+              </div>
+              <span class="owner-cnt">{{ o.count }}</span>
+            </div>
+          </ng-container>
+        </div>
+        <div class="kv-list" style="margin-top:.65rem; padding-top:.5rem; border-top:1px solid var(--border-lt)" *ngIf="largestProject">
+          <div class="kv-row">
+            <span class="kv-key">Largest project</span>
+            <span class="kv-val kv-val--sm">{{ largestProject.name }}</span>
+          </div>
+          <div class="kv-row" *ngIf="mostFollowedProject">
+            <span class="kv-key">Most followed</span>
+            <span class="kv-val kv-val--sm">{{ mostFollowedProject.name }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <button *ngIf="!showAnalyticsPanel"
+          class="analytics-restore" type="button"
+          (click)="showAnalyticsPanel = true">
+    <i class="pi pi-chart-bar"></i> Show analytics
+  </button>
+
+  <!-- ─── MAIN LAYOUT ──────────────────────────── -->
+  <div class="row no-gutters main-layout">
+
+    <!-- ══ FILTER SIDEBAR ══ -->
+    <div class="col-12 col-md-3">
+      <!-- Mobile filter toggle button — shown only on small screens -->
+      <button class="mobile-filter-toggle" type="button"
+              (click)="filterPanelOpen = !filterPanelOpen">
+        <i class="pi pi-sliders-h"></i>
+        Filters
+        <span class="mobile-filter-chip" *ngIf="hasActiveFilters">{{ activeChips.length }}</span>
+        <i class="pi" [class.pi-chevron-down]="!filterPanelOpen"
+                      [class.pi-chevron-up]="filterPanelOpen"
+                      style="margin-left:auto"></i>
+      </button>
+
+      <aside class="filter-panel" [class.filter-panel--open]="filterPanelOpen">
+
+        <div class="filter-panel__hd">
+          <span><i class="pi pi-sliders-h"></i> Filters</span>
+          <button *ngIf="hasActiveFilters"
+                  pButton type="button" label="Clear all"
+                  class="p-button-text p-button-sm filter-clear"
+                  (click)="clearAllFilters()">
+          </button>
+        </div>
+
+        <!-- Search -->
+        <div class="fg">
+          <label class="fg__lbl">Search</label>
+          <div class="search-wrap">
+            <i class="pi pi-search search-icon"></i>
+            <input pInputText type="text"
+                   class="search-input"
+                   placeholder="Name, route, tag, owner..."
+                   [(ngModel)]="globalSearch"
+                   (ngModelChange)="applyFilters()" />
+          </div>
+        </div>
+
+        <!-- Ownership -->
+        <div class="fg">
+          <label class="fg__lbl">Ownership</label>
+          <div class="seg-ctrl">
+            <button class="seg-btn" [class.seg-btn--on]="ownershipFilter === 'all'"
+                    (click)="ownershipFilter = 'all'; applyFilters()" type="button">All</button>
+            <button class="seg-btn" [class.seg-btn--on]="ownershipFilter === 'mine'"
+                    (click)="ownershipFilter = 'mine'; applyFilters()" type="button">Mine</button>
+            <button class="seg-btn" [class.seg-btn--on]="ownershipFilter === 'following'"
+                    (click)="ownershipFilter = 'following'; applyFilters()" type="button">Following</button>
+          </div>
+        </div>
+
+        <!-- Visibility -->
+        <div class="fg">
+          <label class="fg__lbl">Visibility</label>
+          <p-dropdown [options]="visibilityOptions"
+                      [(ngModel)]="selectedVisibility"
+                      optionLabel="label" optionValue="value"
+                      placeholder="All" styleClass="fg-dd"
+                      (onChange)="applyFilters()">
+          </p-dropdown>
+        </div>
+
+        <!-- Date field toggle + range -->
+        <div class="fg">
+          <div class="date-header">
+            <label class="fg__lbl" style="margin:0">Date filter</label>
+            <div class="seg-ctrl seg-ctrl--sm">
+              <button class="seg-btn" [class.seg-btn--on]="dateField === 'lastUpdated'"
+                      (click)="dateField = 'lastUpdated'; applyFilters()" type="button">Updated</button>
+              <button class="seg-btn" [class.seg-btn--on]="dateField === 'dateCreated'"
+                      (click)="dateField = 'dateCreated'; applyFilters()" type="button">Created</button>
+            </div>
+          </div>
+          <p-calendar [(ngModel)]="dateRange"
+                      selectionMode="range"
+                      [readonlyInput]="true"
+                      [showIcon]="true"
+                      placeholder="Select range"
+                      dateFormat="M dd, yy"
+                      styleClass="fg-cal"
+                      (onSelect)="applyFilters()"
+                      (onClearClick)="applyFilters()">
+          </p-calendar>
+        </div>
+
+        <!-- File extension checkboxes (from BlobFile.Extension) -->
+        <div class="fg">
+          <label class="fg__lbl">File Extensions (BlobFile)</label>
+          <div class="ext-checks">
+            <label *ngFor="let ext of allExtensions"
+                   class="ext-check" [class.ext-check--on]="isExtSelected(ext)">
+              <p-checkbox [binary]="true"
+                          [ngModel]="isExtSelected(ext)"
+                          [inputId]="'ext-' + ext"
+                          (onChange)="onExtToggle(ext)">
+              </p-checkbox>
+              <span class="ext-badge" [ngClass]="extColor(ext)">.{{ ext | lowercase }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Notebooks filter (from Notebook entity) -->
+        <div class="fg">
+          <label class="fg__lbl">Notebooks</label>
+          <p-dropdown [options]="notebookOptions"
+                      [(ngModel)]="hasNotebooksFilter"
+                      optionLabel="label" optionValue="value"
+                      placeholder="Any" styleClass="fg-dd"
+                      (onChange)="applyFilters()">
+          </p-dropdown>
+        </div>
+
+        <!-- Fork status (from ForkedFromProjectID) -->
+        <div class="fg">
+          <label class="fg__lbl">Fork status</label>
+          <p-dropdown [options]="forkOptions"
+                      [(ngModel)]="isForkFilter"
+                      optionLabel="label" optionValue="value"
+                      placeholder="All Projects" styleClass="fg-dd"
+                      (onChange)="applyFilters()">
+          </p-dropdown>
+        </div>
+
+        <!-- Storage size filter (from BlobFile.Size sum) -->
+        <div class="fg">
+          <label class="fg__lbl">Total Storage Size</label>
+          <p-dropdown [options]="storageSizeOptions"
+                      [(ngModel)]="storageSizeFilter"
+                      optionLabel="label" optionValue="value"
+                      placeholder="Any Size" styleClass="fg-dd"
+                      (onChange)="applyFilters()">
+          </p-dropdown>
+        </div>
+
+        <!-- Result summary — Projects tab -->
+        <div class="filter-summary" *ngIf="hasActiveFilters && mainTab === 'projects'">
+          <strong>{{ filteredProjects.length }}</strong> of {{ allProjects.length }} projects
+        </div>
+
+        <!-- ── DATASET-SPECIFIC FILTERS (shown only on Datasets tab) ── -->
+        <div *ngIf="mainTab === 'datasets'" class="ds-filters">
+
+          <div class="fg ds-filters__divider">
+            <span class="ds-filters__label">
+              <i class="pi pi-database"></i> Dataset Filters
+            </span>
+          </div>
+
+          <!-- File search -->
+          <div class="fg">
+            <label class="fg__lbl">Search Files</label>
+            <div class="search-wrap">
+              <i class="pi pi-search search-icon"></i>
+              <input pInputText type="text"
+                     class="search-input"
+                     placeholder="Filename, project, ext..."
+                     [(ngModel)]="dsSearch"
+                     (ngModelChange)="applyDatasetFilters()" />
+            </div>
+          </div>
+
+          <!-- Extension checkboxes -->
+          <div class="fg">
+            <label class="fg__lbl">File Extension</label>
+            <div class="ext-checks">
+              <label *ngFor="let ext of allExtensions"
+                     class="ext-check" [class.ext-check--on]="isDsExtSelected(ext)">
+                <p-checkbox [binary]="true"
+                            [ngModel]="isDsExtSelected(ext)"
+                            [inputId]="'dsext-' + ext"
+                            (onChange)="onDsExtToggle(ext)">
+                </p-checkbox>
+                <span class="ext-badge" [ngClass]="extColor('.' + ext.toLowerCase())">.{{ ext | lowercase }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Project filter -->
+          <div class="fg">
+            <label class="fg__lbl">Parent Project</label>
+            <p-dropdown [options]="dsProjectOptions"
+                        [(ngModel)]="dsProjectFilter"
+                        optionLabel="label" optionValue="value"
+                        placeholder="All Projects" styleClass="fg-dd"
+                        (onChange)="applyDatasetFilters()">
+            </p-dropdown>
+          </div>
+
+          <!-- File size filter -->
+          <div class="fg">
+            <label class="fg__lbl">File Size</label>
+            <p-dropdown [options]="dsSizeOptions"
+                        [(ngModel)]="dsSizeFilter"
+                        optionLabel="label" optionValue="value"
+                        placeholder="Any Size" styleClass="fg-dd"
+                        (onChange)="applyDatasetFilters()">
+            </p-dropdown>
+          </div>
+
+          <!-- Dataset result summary -->
+          <div class="filter-summary" *ngIf="hasDsActiveFilters">
+            <strong>{{ filteredDatasets.length }}</strong> of {{ allDatasets.length }} files
+          </div>
+
+          <button *ngIf="hasDsActiveFilters" pButton type="button"
+                  label="Clear dataset filters" icon="pi pi-times"
+                  class="p-button-text p-button-sm filter-clear"
+                  (click)="clearDatasetFilters()">
+          </button>
+
+        </div>
+
+      </aside>
+    </div>
+
+    <!-- ══ DATA GRID ══ -->
+    <div class="col-12 col-md-9">
+      <div class="grid-panel">
+
+        <!-- ── Projects / Datasets toggle ─────────────────────
+             Plain HTML — no SelectButtonModule needed
+        ──────────────────────────────────────────────────────── -->
+        <div class="main-tab-bar">
+          <div class="main-tab-toggle">
+            <button class="main-tab-btn"
+                    [class.main-tab-btn--active]="mainTab === 'projects'"
+                    (click)="mainTab = 'projects'; applyFilters()"
+                    type="button">
+              <i class="pi pi-folder-open"></i>
+              Projects
+              <span class="main-tab-count">{{ filteredProjects.length }}</span>
+            </button>
+            <button class="main-tab-btn"
+                    [class.main-tab-btn--active]="mainTab === 'datasets'"
+                    (click)="mainTab = 'datasets'; applyDatasetFilters()"
+                    type="button">
+              <i class="pi pi-database"></i>
+              Datasets
+              <span class="main-tab-count">{{ filteredDatasets.length }}</span>
+            </button>
+          </div>
+
+          <div class="ds-summary" *ngIf="mainTab === 'projects'">
+            <span class="ds-summary__item">
+              <i class="pi pi-file"></i>
+              {{ statTotalFiles }} files · {{ statTotalNotebooks }} notebooks
+            </span>
+            <span class="ds-summary__item">
+              <i class="pi pi-server"></i>
+              {{ statTotalSizeGB }} GB used
+            </span>
+          </div>
+
+          <div class="ds-summary" *ngIf="mainTab === 'datasets'">
+            <span class="ds-summary__item">
+              <i class="pi pi-database"></i>
+              {{ allDatasets.length }} files across {{ allProjects.length }} projects
+            </span>
+            <span class="ds-summary__item">
+              <i class="pi pi-server"></i>
+              {{ statTotalDatasetSize }}
+            </span>
+            <span class="ds-summary__item">
+              <i class="pi pi-tag"></i>
+              {{ statUniqueExtensions }} file types
+            </span>
+          </div>
+        </div>
+
+        <!-- Toolbar — projects view -->
+        <div class="grid-toolbar" *ngIf="mainTab === 'projects'">
+          <div class="grid-toolbar__left">
+            <!-- Active filter chips -->
+            <div class="chip-row" *ngIf="hasActiveFilters">
+              <span *ngFor="let chip of activeChips" class="chip">
+                {{ chip.label }}
+                <button class="chip__x" (click)="removeChip(chip.key)" type="button">
+                  <i class="pi pi-times"></i>
+                </button>
+              </span>
+            </div>
+            <span class="result-count" *ngIf="!hasActiveFilters">
+              {{ filteredProjects.length }} projects
+            </span>
+          </div>
+
+          <div class="grid-toolbar__right">
+            <span class="sel-badge" *ngIf="selectedCount > 0">{{ selectedCount }} selected</span>
+
+            <!-- Sort controls -->
+            <p-dropdown [options]="sortFieldOptions"
+                        [(ngModel)]="sortField"
+                        optionLabel="label" optionValue="value"
+                        styleClass="sort-dd"
+                        (onChange)="onSortChange()">
+            </p-dropdown>
+            <button class="sort-dir-btn" (click)="toggleSortDir()" type="button"
+                    [title]="sortDir === 'asc' ? 'Ascending' : 'Descending'">
+              <i class="pi" [class.pi-sort-amount-up]="sortDir === 'asc'"
+                            [class.pi-sort-amount-down]="sortDir === 'desc'"></i>
+            </button>
+
+            <!-- View toggle -->
+            <div class="view-toggle">
+              <button class="vt-btn" [class.vt-btn--on]="viewMode === 'table'"
+                      (click)="viewMode = 'table'" type="button" title="Table view">
+                <i class="pi pi-list"></i>
+              </button>
+              <button class="vt-btn" [class.vt-btn--on]="viewMode === 'card'"
+                      (click)="viewMode = 'card'" type="button" title="Card view">
+                <i class="pi pi-th-large"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── DATASET TOOLBAR ── -->
+        <div class="grid-toolbar" *ngIf="mainTab === 'datasets'">
+          <div class="grid-toolbar__left">
+            <div class="chip-row" *ngIf="hasDsActiveFilters">
+              <span *ngFor="let chip of dsActiveChips" class="chip">
+                {{ chip.label }}
+                <button class="chip__x" (click)="removeDsChip(chip.key)" type="button">
+                  <i class="pi pi-times"></i>
+                </button>
+              </span>
+            </div>
+            <span class="result-count" *ngIf="!hasDsActiveFilters">
+              {{ filteredDatasets.length }} files
+            </span>
+          </div>
+          <div class="grid-toolbar__right">
+            <button pButton type="button" label="Export CSV" icon="pi pi-download"
+                    class="p-button-sm p-button-outlined btn-outline"
+                    (click)="onDsExport()">
+            </button>
+            <p-dropdown [options]="dsSortOptions"
+                        [(ngModel)]="dsSortField"
+                        optionLabel="label" optionValue="value"
+                        styleClass="sort-dd"
+                        (onChange)="onDsSortChange()">
+            </p-dropdown>
+            <button class="sort-dir-btn" (click)="toggleDsSortDir()" type="button">
+              <i class="pi" [class.pi-sort-amount-up]="dsSortDir === 'asc'"
+                            [class.pi-sort-amount-down]="dsSortDir === 'desc'"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ════════════════════ PROJECTS VIEW ════════════════════ -->
+        <!-- ── TABLE VIEW ── -->
+        <div *ngIf="mainTab === 'projects' && viewMode === 'table'" class="table-wrap">
+          <p-table [value]="filteredProjects"
+                   [loading]="loading"
+                   [paginator]="true"
+                   [rows]="10"
+                   [rowsPerPageOptions]="[10, 25, 50]"
+                   styleClass="as-table"
+                   responsiveLayout="scroll">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="col-chk">
+                  <input type="checkbox" [checked]="selectAll"
+                         (change)="toggleSelectAll()" class="as-chk" />
+                </th>
+                <th class="col-name">Name / Route</th>
+                <th class="col-tags">Tags</th>
+                <th class="col-exts">File Types</th>
+                <th class="col-num">Files</th>
+                <th class="col-num">Notebooks</th>
+                <th class="col-num">Members</th>
+                <th class="col-storage">Storage</th>
+                <th class="col-date">Last Updated</th>
+                <th class="col-vis">Visibility</th>
+                <th class="col-act">Actions</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-proj>
+              <tr [class.row--sel]="proj.selected"
+                  [class.row--priv]="proj.visibility === 'private'">
+
+                <td class="col-chk">
+                  <input type="checkbox" [(ngModel)]="proj.selected" class="as-chk" />
+                </td>
+
+                <!-- Name + route + fork indicator -->
+                <td class="col-name">
+                  <div class="name-cell">
+                    <i class="pi pi-folder name-cell__ico"
+                       [class.name-cell__ico--fork]="proj.isForked"></i>
+                    <div>
+                      <div class="name-cell__title">{{ proj.name }}</div>
+                      <div class="name-cell__route">{{ proj.route }}</div>
+                      <div class="name-cell__desc">{{ proj.description }}</div>
+                      <div class="name-cell__fork" *ngIf="proj.isForked">
+                        <i class="pi pi-share-alt"></i>
+                        Fork of #{{ proj.forkedFromProjectID }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- ProjectTags -->
+                <td class="col-tags">
+                  <div class="tags-row">
+                    <span *ngFor="let tag of proj.projectTags" class="tag-pill">
+                      {{ tag.name }}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- BlobFile extensions -->
+                <td class="col-exts">
+                  <div class="ext-row">
+                    <span *ngFor="let ext of proj.fileExtensions"
+                          class="ext-badge ext-badge--sm" [ngClass]="extColor(ext)">
+                      .{{ ext | lowercase }}
+                    </span>
+                  </div>
+                </td>
+
+                <!-- BlobFiles.length -->
+                <td class="col-num">
+                  <span class="num-chip">{{ proj.blobFiles.length }}</span>
+                </td>
+
+                <!-- Notebooks.length + type badges -->
+                <td class="col-num">
+                  <div *ngIf="proj.notebookCount > 0" class="nb-cell">
+                    <div class="nb-cell__row">
+                      <span class="num-chip">{{ proj.notebookCount }}</span>
+                    </div>
+                    <div class="nb-cell__types">
+                      <span *ngFor="let nt of getNotebookTypes(proj.notebooks)"
+                            class="nb-type" [class.nb-type--jup]="nt === 'jupyter'"
+                            [class.nb-type--obs]="nt === 'observable'">
+                        {{ nt === 'jupyter' ? 'ipynb' : 'ojs' }}
+                      </span>
+                    </div>
+                  </div>
+                  <span *ngIf="proj.notebookCount === 0" class="none-val">—</span>
+                </td>
+
+                <!-- ProjectUsers.length -->
+                <td class="col-num">
+                  <div class="mem-cell">
+                    <i class="pi pi-users" style="font-size:10px;margin-right:3px;"></i>
+                    {{ proj.memberCount }}
+                  </div>
+                </td>
+
+                <!-- BlobFile size sum -->
+                <td class="col-storage">
+                  <div class="storage-cell">
+                    <span class="storage-cell__val">{{ formatBytes(proj.totalSizeBytes) }}</span>
+                    <div class="mini-bar">
+                      <div class="mini-bar__fill"
+                           [style.width.%]="storageBarPct(proj.totalSizeBytes)"></div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Project.LastUpdated -->
+                <td class="col-date">
+                  <span class="date-val">
+                    {{ proj.lastUpdated | date:'MMM d, yyyy' }}
+                  </span>
+                </td>
+
+                <!-- Project.Visibility -->
+                <td class="col-vis">
+                  <span class="vis-pill"
+                        [class.vis-pill--pub]="proj.visibility === 'public'"
+                        [class.vis-pill--priv]="proj.visibility === 'private'">
+                    <i class="pi"
+                       [class.pi-globe]="proj.visibility === 'public'"
+                       [class.pi-lock]="proj.visibility === 'private'"></i>
+                    {{ proj.visibility === 'public' ? 'Public' : 'Private' }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="col-act">
+                  <div class="act-btns">
+                    <button pButton type="button" icon="pi pi-eye"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--view"
+                            pTooltip="View project" tooltipPosition="top"
+                            (click)="onView(proj)">
+                    </button>
+                    <button pButton type="button" icon="pi pi-share-alt"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--fork"
+                            pTooltip="Fork project" tooltipPosition="top"
+                            (click)="onFork(proj)">
+                    </button>
+                    <button pButton type="button" icon="pi pi-trash"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--del"
+                            pTooltip="Delete project" tooltipPosition="top"
+                            (click)="onDelete(proj)">
+                    </button>
+                  </div>
+                </td>
+
+              </tr>
+            </ng-template>
+
+            <!-- Empty state -->
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="11">
+                  <div class="empty-state">
+                    <i class="pi pi-filter-slash empty-state__ico"></i>
+                    <h3 class="empty-state__title">No projects match your filters</h3>
+                    <p class="empty-state__sub">
+                      Adjust your search, file extension, date range, or storage size filters.
+                    </p>
+                    <button pButton type="button" label="Clear all filters"
+                            icon="pi pi-times" class="p-button-outlined p-button-sm btn-outline"
+                            (click)="clearAllFilters()">
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+          </p-table>
+        </div>
+
+        <!-- ── CARD VIEW ── -->
+        <div *ngIf="mainTab === 'projects' && viewMode === 'card'" class="card-grid">
+          <ng-container *ngIf="filteredProjects.length > 0; else emptyCards">
+
+            <div *ngFor="let proj of filteredProjects" class="proj-card">
+              <div class="proj-card__hd">
+                <span class="proj-card__route">{{ proj.route }}</span>
+                <span class="vis-pill vis-pill--sm"
+                      [class.vis-pill--pub]="proj.visibility === 'public'"
+                      [class.vis-pill--priv]="proj.visibility === 'private'">
+                  <i class="pi"
+                     [class.pi-globe]="proj.visibility === 'public'"
+                     [class.pi-lock]="proj.visibility === 'private'"></i>
+                </span>
+              </div>
+
+              <div class="proj-card__body">
+                <div class="proj-card__name-row">
+                  <h3 class="proj-card__name">{{ proj.name }}</h3>
+                  <span *ngIf="proj.isForked" class="fork-badge">
+                    <i class="pi pi-share-alt"></i> Fork
+                  </span>
+                </div>
+                <p class="proj-card__desc">{{ proj.description }}</p>
+
+                <div class="tags-row proj-card__tags">
+                  <span *ngFor="let tag of proj.projectTags" class="tag-pill">
+                    {{ tag.name }}
+                  </span>
+                </div>
+
+                <div class="ext-row proj-card__exts">
+                  <span *ngFor="let ext of proj.fileExtensions"
+                        class="ext-badge ext-badge--sm" [ngClass]="extColor(ext)">
+                    .{{ ext | lowercase }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="proj-card__stats">
+                <span><i class="pi pi-file"></i> {{ proj.blobFiles.length }} files</span>
+                <span><i class="pi pi-book"></i> {{ proj.notebookCount }} notebooks</span>
+                <span><i class="pi pi-users"></i> {{ proj.memberCount }}</span>
+                <span>{{ formatBytes(proj.totalSizeBytes) }}</span>
+              </div>
+
+              <div class="proj-card__ft">
+                <span class="proj-card__date">
+                  Updated {{ proj.lastUpdated | date:'MMM d, yyyy' }}
+                </span>
+                <div class="proj-card__btns">
+                  <button pButton type="button" icon="pi pi-eye" label="View"
+                          class="p-button-sm p-button-outlined btn-outline"
+                          (click)="onView(proj)">
+                  </button>
+                  <button pButton type="button" icon="pi pi-share-alt" label="Fork"
+                          class="p-button-sm btn-solid"
+                          (click)="onFork(proj)">
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </ng-container>
+
+          <ng-template #emptyCards>
+            <div class="empty-state empty-state--card">
+              <i class="pi pi-filter-slash empty-state__ico"></i>
+              <h3 class="empty-state__title">No projects match your filters</h3>
+              <button pButton type="button" label="Clear filters"
+                      class="p-button-outlined p-button-sm btn-outline"
+                      (click)="clearAllFilters()">
+              </button>
+            </div>
+          </ng-template>
+
+        </div>
+
+
+        <!-- ════════════════════ DATASETS VIEW ════════════════════ -->
+        <div *ngIf="mainTab === 'datasets'" class="table-wrap">
+          <p-table [value]="filteredDatasets"
+                   [loading]="loading"
+                   [paginator]="true"
+                   [rows]="15"
+                   [rowsPerPageOptions]="[15, 30, 50]"
+                   styleClass="as-table"
+                   responsiveLayout="scroll">
+
+            <ng-template pTemplate="header">
+              <tr>
+                <th class="col-ds-name">File Name</th>
+                <th class="col-ds-ext">Type</th>
+                <th class="col-ds-proj">Project</th>
+                <th class="col-ds-owner">Owner</th>
+                <th class="col-ds-dir">Directory</th>
+                <th class="col-ds-size">Size</th>
+                <th class="col-date">Last Modified</th>
+                <th class="col-ds-vis">Visibility</th>
+                <th class="col-act">Actions</th>
+              </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-ds>
+              <tr class="ds-row">
+
+                <!-- File name + extension -->
+                <td class="col-ds-name">
+                  <div class="ds-name-cell">
+                    <span class="ext-badge" [ngClass]="extColor(ds.extension)">
+                      {{ ds.extension }}
+                    </span>
+                    <span class="ds-name-cell__name">{{ ds.fileName }}{{ ds.extension }}</span>
+                  </div>
+                </td>
+
+                <!-- Extension category -->
+                <td class="col-ds-ext">
+                  <span class="ext-badge ext-badge--lg" [ngClass]="extColor(ds.extension)">
+                    {{ ds.extension.replace('.','').toUpperCase() }}
+                  </span>
+                </td>
+
+                <!-- Parent project (clickable) -->
+                <td class="col-ds-proj">
+                  <div class="ds-proj-cell">
+                    <i class="pi pi-folder ds-proj-cell__ico"></i>
+                    <a class="ds-proj-cell__link" (click)="onViewDatasetProject(ds.projectRoute)">
+                      {{ ds.projectName }}
+                    </a>
+                  </div>
+                </td>
+
+                <!-- Project owner -->
+                <td class="col-ds-owner">
+                  <div class="owner-cell">
+                    <i class="pi pi-user"></i>
+                    {{ ds.projectOwner }}
+                  </div>
+                </td>
+
+                <!-- Directory path -->
+                <td class="col-ds-dir">
+                  <code class="ds-dir">{{ ds.directory }}</code>
+                </td>
+
+                <!-- File size -->
+                <td class="col-ds-size">
+                  <div class="storage-cell">
+                    <span class="storage-cell__val">{{ formatBytes(ds.sizeBytes) }}</span>
+                    <div class="mini-bar">
+                      <div class="mini-bar__fill"
+                           [style.width.%]="storageBarPct(ds.sizeBytes)"></div>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Last modified -->
+                <td class="col-date">
+                  <span class="date-val">{{ ds.lastModified | date:'MMM d, yyyy' }}</span>
+                </td>
+
+                <!-- Visibility (from parent project) -->
+                <td class="col-ds-vis">
+                  <span class="vis-pill"
+                        [class.vis-pill--pub]="ds.visibility === 'public'"
+                        [class.vis-pill--priv]="ds.visibility === 'private'">
+                    <i class="pi" [class.pi-globe]="ds.visibility === 'public'"
+                                  [class.pi-lock]="ds.visibility === 'private'"></i>
+                    {{ ds.visibility === 'public' ? 'Public' : 'Private' }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td class="col-act">
+                  <div class="act-btns">
+                    <button pButton type="button" icon="pi pi-eye"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--view"
+                            pTooltip="Preview file" tooltipPosition="top">
+                    </button>
+                    <button pButton type="button" icon="pi pi-download"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--fork"
+                            pTooltip="Download" tooltipPosition="top">
+                    </button>
+                    <button pButton type="button" icon="pi pi-folder-open"
+                            class="p-button-rounded p-button-text p-button-sm ab ab--view"
+                            pTooltip="Go to project" tooltipPosition="top"
+                            (click)="onViewDatasetProject(ds.projectRoute)">
+                    </button>
+                  </div>
+                </td>
+
+              </tr>
+            </ng-template>
+
+            <!-- Empty state -->
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="9">
+                  <div class="empty-state">
+                    <i class="pi pi-filter-slash empty-state__ico"></i>
+                    <h3 class="empty-state__title">No files match your filters</h3>
+                    <p class="empty-state__sub">
+                      Try adjusting the extension, project, or size filters.
+                    </p>
+                    <button pButton type="button" label="Clear all filters"
+                            icon="pi pi-times"
+                            class="p-button-outlined p-button-sm btn-outline"
+                            (click)="clearDatasetFilters()">
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+
+          </p-table>
+        </div>
+        <!-- /datasets view -->
+
+      </div><!-- /col grid -->
+    </div><!-- /row main-layout -->
+  </div><!-- /dash-root inner -->
+
+  <!-- ─── DELETE CONFIRMATION MODAL ────────────────
+       Inline modal — no PrimeNG p-dialog dependency
+  ──────────────────────────────────────────────── -->
+  <div class="del-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+    <div class="del-modal" (click)="$event.stopPropagation()">
+
+      <div class="del-modal__hd">
+        <div class="del-modal__icon">
+          <i class="pi pi-exclamation-triangle"></i>
+        </div>
+        <h3 class="del-modal__title">Delete Project</h3>
+      </div>
+
+      <div class="del-modal__body" *ngIf="projectToDelete">
+        <p class="del-modal__msg">
+          Are you sure you want to delete
+          <strong>{{ projectToDelete.name }}</strong>?
+        </p>
+        <div class="del-modal__meta">
+          <span class="del-meta-row">
+            <i class="pi pi-link"></i>
+            <code>{{ projectToDelete.route }}</code>
+          </span>
+          <span class="del-meta-row">
+            <i class="pi pi-file"></i>
+            {{ projectToDelete.blobFiles.length }} files ·
+            {{ formatBytes(projectToDelete.totalSizeBytes) }}
+          </span>
+          <span class="del-meta-row del-meta-row--warn" *ngIf="projectToDelete.isForked === false && projectToDelete.memberCount > 1">
+            <i class="pi pi-users"></i>
+            {{ projectToDelete.memberCount }} members will lose access
+          </span>
+        </div>
+        <p class="del-modal__warn">
+          This action cannot be undone. All files and notebooks will be permanently removed.
+        </p>
+      </div>
+
+      <div class="del-modal__ft">
+        <button pButton type="button"
+                label="Cancel"
+                class="p-button-outlined p-button-sm btn-outline"
+                (click)="cancelDelete()">
+        </button>
+        <button pButton type="button"
+                label="Delete Project"
+                icon="pi pi-trash"
+                class="p-button-sm btn-danger"
+                (click)="confirmDelete()">
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

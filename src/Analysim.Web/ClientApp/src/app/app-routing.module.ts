@@ -14,6 +14,9 @@ import { EmailConfirmationComponent } from './email-confirmation/email-confirmat
 import { ResetPasswordComponent } from './email-confirmation/reset-password/reset-password.component';
 import { EmailResendVerificationComponent } from './email-confirmation/email-resend-verification/email-resend-verification.component';
 import { NotFoundComponent } from './error/not-found/not-found.component'
+import { DashboardMockupComponent } from './dashboard-mockup/dashboard-mockup.component';
+import { ProjectDetailMockComponent } from './project-detail-mock/project-detail-mock.component';
+import { ProjectCreateMockComponent } from './project-create-mock/project-create-mock.component';
 const routes: Routes = [];
 
 @NgModule({
@@ -21,6 +24,9 @@ const routes: Routes = [];
     RouterModule.forRoot([
       { path: 'home', component: HomeComponent },
       { path: '', redirectTo: '/home', pathMatch: 'full' },
+      { path: 'dashboard', component: DashboardMockupComponent },
+      { path: 'project/create',  component: ProjectCreateMockComponent },
+      { path: 'project/:route',  component: ProjectDetailMockComponent },
       { path: "login", component: LoginComponent },
       { path: "aboutus", component: AboutUsComponent },
       { path: "email-confirmation", component: EmailConfirmationComponent },
