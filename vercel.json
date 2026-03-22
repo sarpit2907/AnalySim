@@ -1,7 +1,0 @@
-{
-  "buildCommand": "cd src/Analysim.Web/ClientApp && npm install && npm run build -- --configuration production",
-  "outputDirectory": "src/Analysim.Web/ClientApp/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
