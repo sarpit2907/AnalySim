@@ -246,3 +246,4 @@ src/Analysim.Web/Logs
 
 #
 .DS_Store
+.vercel
